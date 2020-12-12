@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) 2019 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
+ *   Copyright (c) 2020 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -20,57 +20,44 @@
  *                                                                         *
  ***************************************************************************/
 
+#ifndef SKETCHER_VIEWPROVIDERSKETCHGEOMETRYEXTENSION_H
+#define SKETCHER_VIEWPROVIDERSKETCHGEOMETRYEXTENSION_H
 
-#ifndef PART_GEOMETRYEXTENSION_H
-#define PART_GEOMETRYEXTENSION_H
+#include <Mod/Part/App/Geometry.h>
 
-#include <Base/StdStlTools.h>
-#include <Base/Persistence.h>
-#include <memory>
-#include <string>
+namespace SketcherGui {
 
-
-namespace Part {
-
-class PartExport GeometryExtension: public Base::BaseClass
+class SketcherGuiExport ViewProviderSketchGeometryExtension : public Part::GeometryExtension
 {
-    TYPESYSTEM_HEADER();
+    TYPESYSTEM_HEADER_WITH_OVERRIDE();
 public:
-    virtual ~GeometryExtension() = default;
 
-    virtual std::unique_ptr<GeometryExtension> copy(void) const = 0;
+    ViewProviderSketchGeometryExtension();
+    virtual ~ViewProviderSketchGeometryExtension() override = default;
 
-    virtual PyObject *getPyObject(void) = 0;
-    PyObject* copyPyObject() const;
+    virtual std::unique_ptr<Part::GeometryExtension> copy(void) const override;
 
-    inline void setName(const std::string& str) {name = str;}
-    inline const std::string &getName () const {return name;}
+    virtual PyObject *getPyObject(void) override;
 
-protected:
-    GeometryExtension();
-    GeometryExtension(const GeometryExtension &obj) = default;
-    GeometryExtension& operator= (const GeometryExtension &obj) = default;
+    // Data Members
+
+    // Representation factor
+    // Provides a mechanism to store a factor associated with the representation of a geometry
+    // This is only useful when a geometry must be scaled only for representation, while keeping its value
+    // Applicability: General abstract concepts embodied in a geometry, in practice B-Spline poles.
+    // Why not in SketchGeometryExtension? Because it is merely representation related. It has no place in
+    // a console application.
+    virtual double getRepresentationFactor() const {return RepresentationFactor;}
+    virtual void setRepresentationFactor(double representationFactor) {RepresentationFactor = representationFactor;}
 
 private:
-    std::string name;
+    ViewProviderSketchGeometryExtension(const ViewProviderSketchGeometryExtension&) = default;
+
+private:
+    double RepresentationFactor;
 };
 
+} //namespace SketcherGui
 
 
-class PartExport GeometryPersistenceExtension : public Part::GeometryExtension
-{
-    TYPESYSTEM_HEADER();
-public:
-    virtual ~GeometryPersistenceExtension() = default;
-
-    // Own Persistence implementer - Not Base::Persistence - managed by Part::Geometry
-    virtual void Save(Base::Writer &/*writer*/) const = 0;
-    virtual void Restore(Base::XMLReader &/*reader*/) = 0;
-
-protected:
-    void restoreNameAttribute(Base::XMLReader &/*reader*/);
-};
-
-}
-
-#endif // PART_GEOMETRYEXTENSION_H
+#endif // SKETCHER_VIEWPROVIDERSKETCHGEOMETRYEXTENSION_H

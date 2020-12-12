@@ -20,57 +20,41 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "PreCompiled.h"
 
-#ifndef PART_GEOMETRYEXTENSION_H
-#define PART_GEOMETRYEXTENSION_H
+#include <Base/Writer.h>
+#include <Base/Reader.h>
+#include <Base/Exception.h>
 
-#include <Base/StdStlTools.h>
-#include <Base/Persistence.h>
-#include <memory>
-#include <string>
+#include "ViewProviderSketchGeometryExtension.h"
+
+using namespace SketcherGui;
+
+//---------- Geometry Extension
+TYPESYSTEM_SOURCE(SketcherGui::ViewProviderSketchGeometryExtension,Part::GeometryExtension)
 
 
-namespace Part {
-
-class PartExport GeometryExtension: public Base::BaseClass
+ViewProviderSketchGeometryExtension::ViewProviderSketchGeometryExtension():RepresentationFactor(1.0)
 {
-    TYPESYSTEM_HEADER();
-public:
-    virtual ~GeometryExtension() = default;
-
-    virtual std::unique_ptr<GeometryExtension> copy(void) const = 0;
-
-    virtual PyObject *getPyObject(void) = 0;
-    PyObject* copyPyObject() const;
-
-    inline void setName(const std::string& str) {name = str;}
-    inline const std::string &getName () const {return name;}
-
-protected:
-    GeometryExtension();
-    GeometryExtension(const GeometryExtension &obj) = default;
-    GeometryExtension& operator= (const GeometryExtension &obj) = default;
-
-private:
-    std::string name;
-};
-
-
-
-class PartExport GeometryPersistenceExtension : public Part::GeometryExtension
-{
-    TYPESYSTEM_HEADER();
-public:
-    virtual ~GeometryPersistenceExtension() = default;
-
-    // Own Persistence implementer - Not Base::Persistence - managed by Part::Geometry
-    virtual void Save(Base::Writer &/*writer*/) const = 0;
-    virtual void Restore(Base::XMLReader &/*reader*/) = 0;
-
-protected:
-    void restoreNameAttribute(Base::XMLReader &/*reader*/);
-};
 
 }
 
-#endif // PART_GEOMETRYEXTENSION_H
+std::unique_ptr<Part::GeometryExtension> ViewProviderSketchGeometryExtension::copy(void) const
+{
+    auto cpy = std::make_unique<ViewProviderSketchGeometryExtension>();
+
+    cpy->RepresentationFactor = this->RepresentationFactor;
+
+    cpy->setName(this->getName()); // Base Class
+
+#if defined (__GNUC__) && (__GNUC__ <=4)
+    return std::move(cpy);
+#else
+    return cpy;
+#endif
+}
+
+PyObject * ViewProviderSketchGeometryExtension::getPyObject(void)
+{
+    THROWM(Base::NotImplementedError, "ViewProviderSketchGeometryExtension does not have a Python counterpart");
+}

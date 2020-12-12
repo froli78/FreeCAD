@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (c) 2019 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
+ *   Copyright (c) 2020 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -20,57 +20,40 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "PreCompiled.h"
 
-#ifndef PART_GEOMETRYEXTENSION_H
-#define PART_GEOMETRYEXTENSION_H
+#include "GeometryMigrationExtension.h"
 
-#include <Base/StdStlTools.h>
-#include <Base/Persistence.h>
-#include <memory>
-#include <string>
+#include <Base/Exception.h>
+
+using namespace Part;
 
 
-namespace Part {
+//---------- Geometry Extension
+TYPESYSTEM_SOURCE(Part::GeometryMigrationExtension,Part::GeometryExtension)
 
-class PartExport GeometryExtension: public Base::BaseClass
+GeometryMigrationExtension::GeometryMigrationExtension():ConstructionState(false)
 {
-    TYPESYSTEM_HEADER();
-public:
-    virtual ~GeometryExtension() = default;
-
-    virtual std::unique_ptr<GeometryExtension> copy(void) const = 0;
-
-    virtual PyObject *getPyObject(void) = 0;
-    PyObject* copyPyObject() const;
-
-    inline void setName(const std::string& str) {name = str;}
-    inline const std::string &getName () const {return name;}
-
-protected:
-    GeometryExtension();
-    GeometryExtension(const GeometryExtension &obj) = default;
-    GeometryExtension& operator= (const GeometryExtension &obj) = default;
-
-private:
-    std::string name;
-};
-
-
-
-class PartExport GeometryPersistenceExtension : public Part::GeometryExtension
-{
-    TYPESYSTEM_HEADER();
-public:
-    virtual ~GeometryPersistenceExtension() = default;
-
-    // Own Persistence implementer - Not Base::Persistence - managed by Part::Geometry
-    virtual void Save(Base::Writer &/*writer*/) const = 0;
-    virtual void Restore(Base::XMLReader &/*reader*/) = 0;
-
-protected:
-    void restoreNameAttribute(Base::XMLReader &/*reader*/);
-};
 
 }
 
-#endif // PART_GEOMETRYEXTENSION_H
+std::unique_ptr<Part::GeometryExtension> GeometryMigrationExtension::copy(void) const
+{
+    auto cpy = std::make_unique<GeometryMigrationExtension>();
+
+    cpy->ConstructionState = this->ConstructionState;
+    cpy->GeometryMigrationFlags  = this->GeometryMigrationFlags;
+
+    cpy->setName(this->getName()); // Base Class
+
+#if defined (__GNUC__) && (__GNUC__ <=4)
+    return std::move(cpy);
+#else
+    return cpy;
+#endif
+}
+
+PyObject * GeometryMigrationExtension::getPyObject(void)
+{
+    THROWM(Base::NotImplementedError, "GeometryMigrationExtension does not have a Python counterpart");
+}

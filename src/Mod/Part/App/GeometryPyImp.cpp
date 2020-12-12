@@ -248,9 +248,7 @@ PyObject* GeometryPy::getExtensionOfType(PyObject *args)
                 std::shared_ptr<const GeometryExtension> ext(this->getGeometryPtr()->getExtension(type));
 
                 // we create a copy and transfer this copy's memory management responsibility to Python
-                Py::Tuple tuple;
-                PyObject* cpy = static_cast<GeometryExtensionPy *>(std::const_pointer_cast<GeometryExtension>(ext)->getPyObject())->copy(tuple.ptr());
-
+                PyObject* cpy = ext->copyPyObject();
                 return cpy;
             }
             catch(const Base::ValueError& e) {
@@ -259,6 +257,10 @@ PyObject* GeometryPy::getExtensionOfType(PyObject *args)
             }
             catch(const std::bad_weak_ptr&) {
                 PyErr_SetString(PartExceptionOCCError, "Geometry extension does not exist anymore.");
+                return 0;
+            }
+            catch(Base::NotImplementedError) {
+                PyErr_SetString(Part::PartExceptionOCCError, "Geometry extension does not implement a Python counterpart.");
                 return 0;
             }
         }
@@ -283,9 +285,7 @@ PyObject* GeometryPy::getExtensionOfName(PyObject *args)
             std::shared_ptr<const GeometryExtension> ext(this->getGeometryPtr()->getExtension(std::string(o)));
 
             // we create a copy and transfer this copy's memory management responsibility to Python
-            Py::Tuple tuple;
-            PyObject* cpy = static_cast<GeometryExtensionPy *>(std::const_pointer_cast<GeometryExtension>(ext)->getPyObject())->copy(tuple.ptr());
-
+            PyObject* cpy = ext->copyPyObject();
             return cpy;
         }
         catch(const Base::ValueError& e) {
@@ -294,6 +294,10 @@ PyObject* GeometryPy::getExtensionOfName(PyObject *args)
         }
         catch(const std::bad_weak_ptr&) {
             PyErr_SetString(PartExceptionOCCError, "Geometry extension does not exist anymore.");
+            return 0;
+        }
+        catch(Base::NotImplementedError) {
+            PyErr_SetString(Part::PartExceptionOCCError, "Geometry extension does not implement a Python counterpart.");
             return 0;
         }
 
@@ -408,7 +412,7 @@ PyObject* GeometryPy::getExtensions(PyObject *args)
     try {
         const std::vector<std::weak_ptr<const GeometryExtension>> ext = this->getGeometryPtr()->getExtensions();
 
-        PyObject* list = PyList_New(ext.size());
+        PyObject* list = PyList_New(0);
 
         for (std::size_t i=0; i<ext.size(); ++i) {
 
@@ -417,10 +421,15 @@ PyObject* GeometryPy::getExtensions(PyObject *args)
 
             if(p) {
                 // we create a python copy and add it to the list
-                Py::Tuple tuple;
-                PyObject* cpy = static_cast<GeometryExtensionPy *>(p->getPyObject())->copy(tuple.ptr());
 
-                PyList_SetItem( list, i, cpy);
+                try {
+                    PyObject* cpy = p->copyPyObject();
+                    PyList_Append( list, cpy);
+                    Py_DECREF(cpy);
+                }
+                catch(Base::NotImplementedError) {
+                    // silently ignoring extensions not having a Python object
+                }
             }
         }
 
@@ -431,17 +440,6 @@ PyObject* GeometryPy::getExtensions(PyObject *args)
         return 0;
     }
 
-}
-
-Py::Boolean GeometryPy::getConstruction(void) const
-{
-    return Py::Boolean(getGeometryPtr()->getConstruction());
-}
-
-void  GeometryPy::setConstruction(Py::Boolean arg)
-{
-    if (getGeometryPtr()->getTypeId() != Part::GeomPoint::getClassTypeId())
-        getGeometryPtr()->setConstruction(arg);
 }
 
 Py::String GeometryPy::getTag(void) const
