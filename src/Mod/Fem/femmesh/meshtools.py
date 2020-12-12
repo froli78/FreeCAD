@@ -476,18 +476,24 @@ def get_femvolumeelements_by_femfacenodes(
 
 
 # ************************************************************************************************
+#A kód alapján nekem úgy tűnik, hogy csak akkor lehet kisebb a count_femelements számláló mint a len(femelement_table)
+#ha a "# get remaining femelements for the fem_objects" ág egyáltalán nem hajtódik végre!!! IGEN ez a helyzet...
 def get_femelement_sets(
     femmesh,
-    femelement_table,
-    fem_objects,
+    femelement_table, #Úgy tűnik ez nem változik (Nálam ez a több elemű!) Ez lényegében a Mesh-ben lévő 'Volume'-ok = elemek id-it tartalmazó tábla kell legyen... (Ezt onnan tudom, hogy a FreeCAD-ből a mesh-t kiválasztva majd Export --> .meshpy formátum kiválasztásával lehet ki exportálni megtekinthető formába és az abban lévő elemek szám egyezik a len(femelement_table) által visszaadott értékkel.)
+    fem_objects, #Ezen indul el kiválogatja azokat az objektumokat amiknek van referenciájuk és azoknak a referenciáit és azok számát kinyeri. A fem_objects-ben található objektumok száma 13 ami alapján ezek minden bizonnyal az anyagokat takarják.
     femnodes_ele_table=None
 ):
     # fem_objects = FreeCAD FEM document objects
     # get femelements for reference shapes of each obj.References
     count_femelements = 0
     referenced_femelements = []
-    has_remaining_femelements = None
+    has_remaining_femelements = True #None
+    #DEBUG
+    simple_counter = 0
+    count_of_femobjects_which_have_zero_reference = 0
     for fem_object_i, fem_object in enumerate(fem_objects):
+        simple_counter += 1
         obj = fem_object["Object"]
         FreeCAD.Console.PrintMessage(
             "Constraint: {} --> We're going to search "
@@ -505,20 +511,56 @@ def get_femelement_sets(
             )
             referenced_femelements += ref_shape_femelements
             count_femelements += len(ref_shape_femelements)
+            #DEBUG
+            if len(ref_shape_femelements) == 0:
+                count_of_femobjects_which_have_zero_reference += 1
+            #DEBUG
+            #FreeCAD.Console.PrintMessage(
+            #    "DEBUG Number of referenced_femelements by actual object: {}\n"
+            #    .format(len(ref_shape_femelements))
+            #)
             fem_object["FEMElements"] = ref_shape_femelements
         else:
             has_remaining_femelements = obj.Name
+            #DEBUG
+            FreeCAD.Console.PrintMessage(
+                "DEBUG has_remaining_femelements content: {}\n"
+                .format(has_remaining_femelements)
+            )
+    #DEBUG
+    FreeCAD.Console.PrintMessage(
+        "DEBUG Number of referenced_femelements: {}\n"
+        .format(len(referenced_femelements))
+    )
+    FreeCAD.Console.PrintMessage(
+        "DEBUG Number of fem_objects: {}\n"
+        .format(simple_counter)
+    )
+    FreeCAD.Console.PrintMessage(
+        "DEBUG Number of femobjects which have zero reference: {}\n"
+        .format(count_of_femobjects_which_have_zero_reference)
+    )
     # get remaining femelements for the fem_objects
     if has_remaining_femelements:
-        remaining_femelements = []
+        #DEBUG
+        FreeCAD.Console.PrintMessage(
+            "DEBUG The 'has_remaining_femelements' branch started\n"
+            "There are not referenced femelements! (or this branch swhitched to always run)\n"
+        )
+        remaining_femelements = [] #Maradék elemek Listája
         for elemid in femelement_table:
             if elemid not in referenced_femelements:
                 remaining_femelements.append(elemid)
+        #DEBUG
+        FreeCAD.Console.PrintMessage(
+            "DEBUG Number of NOT referenced_femelements: {}\n"
+            .format(len(remaining_femelements))
+        )
         count_femelements += len(remaining_femelements)
         for fem_object in fem_objects:
             obj = fem_object["Object"]
             if obj.Name == has_remaining_femelements:
-                fem_object["FEMElements"] = sorted(remaining_femelements)
+                fem_object["FEMElements"] = sorted(remaining_femelements) #Ez az 508-ra tekintettel fura 
     # check if all worked out well
     if femelements_count_ok(len(femelement_table), count_femelements):
         return True
